@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "gtaf-mcp": {
+      "command": "uv",
+      "args": ["run", "main.py"],
+      "cwd": "/Users/shiwantha.lakmal/Personal/gtaf-mcp",
+      "env": {
+        "PYTHONPATH": "/Users/shiwantha.lakmal/Personal/gtaf-mcp"
+      }
+    }
+  }
+}
