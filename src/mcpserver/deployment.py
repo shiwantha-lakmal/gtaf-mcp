@@ -32,7 +32,7 @@ def get_failures_by_project() -> str:
     
     url = f"https://dev-portal.ordino.ai/api/v1/public/test-report/failed-test-cases/0a180944-8df0-4fc5-9f38-98a36bfda85c"
     headers = {
-        "Ordino-Key": "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4="
+        "Ordino-Key": "YoXGKROxf/p43uOoTMhUVWusceS1Y+5VoaQP54sJU+I="
     }
     
     response = requests.get(url, headers=headers)
