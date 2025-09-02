@@ -124,8 +124,16 @@ Depending on your operating system, place the `mcp.json` file in:
 
 ## 🎯 Available Tools
 
-### `add`
-Adds two integers and returns the result.
+The GTAF MCP server provides three tools for mathematical operations, project management, and test failure analysis:
+
+| Tool | Purpose | Description |
+|------|---------|-------------|
+| 🔢 `add` | Mathematical Operations | Add two integers |
+| 🏢 `get_projects` | Project Management | Get GrubTech project information |
+| 🚨 `get_failures_by_project` | Test Failure Analysis | Get test failure diagnostics |
+
+### 🔢 `add` - Mathematical Operations
+Performs mathematical addition of two integers.
 
 **Parameters:**
 - `digit1` (int): First number
@@ -137,6 +145,41 @@ Adds two integers and returns the result.
 **Example usage in Cursor:**
 ```
 @gtaf-mcp add 3 and 5
+Result: 8
+```
+
+---
+
+### 🏢 `get_projects` - Project Management & Discovery
+Retrieves all active projects from the GrubTech testing platform.
+
+**Parameters:**
+- None required
+
+**Returns:**
+- `str`: JSON string containing project information including metadata, testing configuration, and repository details
+
+**Example usage in Cursor:**
+```
+@gtaf-mcp get all projects in grubtech
+Returns: Project configuration with testing capabilities
+```
+
+---
+
+### 🚨 `get_failures_by_project` - Test Failure Analysis
+Retrieves test failure analysis for the dataplatform-reporting project.
+
+**Parameters:**
+- None required
+
+**Returns:**
+- `str`: JSON string containing failed test cases with error messages, stack traces, and diagnostic information
+
+**Example usage in Cursor:**
+```
+@gtaf-mcp get failure test cases
+Returns: Failure analysis with test diagnostics
 ```
 
 ## 🧪 Testing the Setup
@@ -145,16 +188,30 @@ Adds two integers and returns the result.
    
    In Cursor, you should see the MCP server listed in the MCP panel or status.
 
-2. **Test the add tool**
+2. **Test the mathematical operations**
    
-   Try using the tool in Cursor:
+   Try using the add tool in Cursor:
    ```
    Can you add 10 and 15 using the MCP tool?
    ```
 
-3. **Check for errors**
+3. **Test project discovery**
    
-   If there are issues, check Cursor's developer console or MCP logs.
+   Try retrieving project information:
+   ```
+   Get all projects in GrubTech
+   ```
+
+4. **Test failure analysis**
+   
+   Try getting test failure data:
+   ```
+   Get failure test cases for analysis
+   ```
+
+5. **Check for errors**
+   
+   If there are issues, check Cursor's developer console or MCP logs for detailed error information.
 
 ## 🚨 Troubleshooting
 
