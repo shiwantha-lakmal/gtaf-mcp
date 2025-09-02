@@ -212,7 +212,7 @@ gtaf-mcp/
 │   └── mcpserver/
 │       ├── __init__.py
 │       ├── __main__.py          # Entry point
-│       └── deployment.py        # MCP tools definition
+│       └── service.py           # MCP tools definition
 ├── pyproject.toml               # Project configuration
 ├── mcp.json                     # Sample MCP configuration
 └── README.md                    # This file
@@ -220,7 +220,7 @@ gtaf-mcp/
 
 ### Adding New Tools
 
-1. Edit `src/mcpserver/deployment.py`
+1. Edit `src/mcpserver/service.py`
 2. Add new tool functions with `@mcp.tool()` decorator
 3. Commit and push to update the server
 

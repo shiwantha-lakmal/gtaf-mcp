@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("deployment")
+mcp = FastMCP("service")
 
 @mcp.tool()
 # add 2 digit and return the result

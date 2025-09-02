@@ -1,4 +1,4 @@
-from mcpserver.deployment import mcp
+from mcpserver.service import mcp
 
 def main():
     mcp.run()
