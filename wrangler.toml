@@ -1,0 +1,30 @@
+name = "gtaf-mcp"
+main = "main.py"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["python_workers"]
+
+[env.production]
+name = "gtaf-mcp"
+
+[env.staging]
+name = "gtaf-mcp-staging"
+
+# Uncomment and configure if you need environment variables
+# [vars]
+# MY_VARIABLE = "production_value"
+
+# Uncomment and configure if you need KV storage
+# [[kv_namespaces]]
+# binding = "MY_KV_NAMESPACE"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"
+
+# Uncomment and configure if you need Durable Objects
+# [[durable_objects.bindings]]
+# name = "MY_DURABLE_OBJECT"
+# class_name = "MyDurableObject"
+
+# Uncomment and configure if you need R2 storage
+# [[r2_buckets]]
+# binding = "MY_BUCKET"
+# bucket_name = "my-bucket"
