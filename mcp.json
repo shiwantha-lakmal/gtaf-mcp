@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "gtaf-mcp": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/shiwantha-lakmal/gtaf-mcp.git", "mcp-server"]
+      "command": "uv",
+      "args": ["run", "--project", "/Users/shiwantha.lakmal/Personal/gtaf-mcp", "mcp-server"],
+      "cwd": "/Users/shiwantha.lakmal/Personal/gtaf-mcp"
     }
   }
 }
