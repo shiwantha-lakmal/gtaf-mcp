@@ -24,3 +24,18 @@ def get_projects() -> str:
     
     return json.dumps(response.json(), indent=2)
     
+@mcp.tool()
+def get_failures_by_project(project_id: str) -> str:
+    """Get all failures by project ID by calling API"""
+    import requests
+    import json
+    
+    url = f"https://dev-portal.ordino.ai/api/v1/public/test-report/failed-test-cases/{project_id}"
+    headers = {
+        "Ordino-Key": "bLHZFTumd1IEHB/XAkkFwUJdJcBuuR6Zs0vVtHp4ZT4="
+    }
+    
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # Raise an exception for bad status codes
+    
+    return json.dumps(response.json(), indent=2)
