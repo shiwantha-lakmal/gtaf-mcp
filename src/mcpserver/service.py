@@ -37,7 +37,11 @@ def get_projects() -> str:
     - Feature flags and example app settings
     
     Use cases:
-    - Project discovery and inventory management
+    - Organization level projects discovery
+    - Team level project listing
+    - Project level identity management
+    - Project information search
+    - Project active status monitoring
     - Configuration auditing and compliance checks
     - Integration setup validation
     - Test environment preparation
@@ -94,7 +98,7 @@ def get_failures_by_project() -> str:
     Returns:
         JSON string containing detailed failure report with:
         - Test execution status and success indicators
-        - Array of failed test cases with full diagnostic information
+        - Json array of failed test cases with full diagnostic information
         - Error categorization for efficient debugging workflows
         
     API Endpoint:
