@@ -1,13 +1,10 @@
 from mcp.server.fastmcp import FastMCP
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
-import tempfile
-import time
-import json
-from pathlib import Path
+from facade import OrdinoResultClient
 
 mcp = FastMCP("service")
+
+# Initialize result client
+result_client = OrdinoResultClient()
 
 @mcp.tool()
 def add(digit1: int, digit2: int) -> int:
@@ -62,18 +59,7 @@ def get_projects() -> str:
     Authentication:
         Requires valid Ordino-Key header for API access
     """
-    import requests
-    import json
-    
-    url = "https://dev-portal.ordino.ai/api/v1/project-external"
-    headers = {
-        "Ordino-Key": "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4="
-    }
-    
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()  # Raise an exception for bad status codes
-    
-    return json.dumps(response.json(), indent=2)
+    return result_client.get_projects()
     
 @mcp.tool()
 def get_failures_by_project() -> str:
@@ -92,7 +78,7 @@ def get_failures_by_project() -> str:
     - Element interaction timeouts/accessibility or serve side errors
     - Data validation mismatches and assertion errors
     - Missing DOM elements and selector failures
-    - Cross-browser compatibility problems or framework errors 
+    - Slowness/Network issues or framework errors 
     
     Use cases:
     - Test failure triage and prioritization
@@ -119,15 +105,4 @@ def get_failures_by_project() -> str:
     Authentication:
         Requires valid Ordino-Key with test report access permissions
     """
-    import requests
-    import json
-    
-    url = f"https://dev-portal.ordino.ai/api/v1/public/test-report/failed-test-cases/0a180944-8df0-4fc5-9f38-98a36bfda85c"
-    headers = {
-        "Ordino-Key": "YoXGKROxf/p43uOoTMhUVWusceS1Y+5VoaQP54sJU+I="
-    }
-    
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()  # Raise an exception for bad status codes
-    
-    return json.dumps(response.json(), indent=2)
+    return result_client.get_test_failures()
