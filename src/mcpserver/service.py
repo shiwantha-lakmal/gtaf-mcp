@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from facade import OrdinoResultClient, LightweightKnowledgeDB
+from .facade import OrdinoResultClient, LightweightKnowledgeDB
 
 mcp = FastMCP("service")
 
