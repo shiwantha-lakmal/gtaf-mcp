@@ -1,4 +1,11 @@
 from mcp.server.fastmcp import FastMCP
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+import tempfile
+import time
+import json
+from pathlib import Path
 
 mcp = FastMCP("service")
 
@@ -34,7 +41,7 @@ def get_projects() -> str:
     - Project metadata (ID, name, partner/team associations)
     - Testing configuration (platform, GUI, API, mobile capabilities)
     - Repository integration details
-    - Feature flags and example app settings
+    - Feature flags and example ordino dev portal project settings
     
     Use cases:
     - Organization level projects discovery
@@ -44,7 +51,7 @@ def get_projects() -> str:
     - Project active status monitoring
     - Configuration auditing and compliance checks
     - Integration setup validation
-    - Test environment preparation
+    - Test environment preparation & Ordino Dev Portal Settings
     
     Returns:
         JSON string containing array of project objects with full configuration details
@@ -75,24 +82,24 @@ def get_failures_by_project() -> str:
     
     This function provides detailed failure diagnostics including:
     - Complete test case identification and status
-    - Full error messages with Cypress/testing framework details
+    - Full error messages with Cypress/Playwright testing framework details
     - Stack traces for debugging and root cause analysis
     - File paths and specific test step failures
     - UI interaction issues and element accessibility problems
     
     Key failure categories analyzed:
-    - UI overlay and loading spinner conflicts
-    - Element interaction timeouts and accessibility issues
+    - UI overlay DOM diff comparison analysis
+    - Element interaction timeouts/accessibility or serve side errors
     - Data validation mismatches and assertion errors
     - Missing DOM elements and selector failures
-    - Cross-browser compatibility problems
+    - Cross-browser compatibility problems or framework errors 
     
     Use cases:
     - Test failure triage and prioritization
     - Quality assurance reporting and metrics
     - Development debugging and issue resolution
     - Regression analysis and trend monitoring
-    - CI/CD pipeline failure investigation
+    - Test failure investigation & root cause analysis
     - Test infrastructure health monitoring
     
     Returns:
@@ -100,6 +107,8 @@ def get_failures_by_project() -> str:
         - Test execution status and success indicators
         - Json array of failed test cases with full diagnostic information
         - Error categorization for efficient debugging workflows
+        - Suggested fixes and mitigation strategies based on the test failure history analysis
+        - Is same testcase failed before or not if failed before then provide the fail history of the testcase
         
     API Endpoint:
         GET /api/v1/public/test-report/failed-test-cases/{project_id}
