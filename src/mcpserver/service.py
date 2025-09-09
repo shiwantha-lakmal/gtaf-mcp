@@ -33,64 +33,54 @@ def add(digit1: int, digit2: int) -> int:
 def get_projects() -> str:
     """
     Get all active projects from GrubTech testing platform.
-    
     Returns:
         JSON array with:
         
         📋 Project Information:
         - Project ID, name, partner/team associations
         
-        🔧 Technical Capabilities:
+        📡 Technical Capabilities:
         - Platform, GUI, API, mobile testing configuration
         - Repository integration details
     """
     return result_client.get_projects()
     
 @mcp.tool()
-def get_failures_by_project() -> str:
+def get_failures_by_project(project_name: str) -> str:
     """
-    Retrieves comprehensive test failure analysis for the dataplatform-reporting project.
+    Get test failure details for a specific project by name.
     
-    This function provides detailed failure diagnostics including:
-    - Complete test case identification and status
-    - Full error messages with Cypress/Playwright testing framework details
-    - Stack traces for debugging and root cause analysis
-    - File paths and specific test step failures
-    - UI interaction issues and element accessibility problems
+    Args:
+        project_name: Name of the project to get failure details for
     
-    Key failure categories analyzed:
-    - UI overlay DOM diff comparison analysis
-    - Element interaction timeouts/accessibility or serve side errors
-    - Data validation mismatches and assertion errors
-    - Missing DOM elements and selector failures
-    - Slowness/Network issues or framework errors 
-    
-    Use cases:
-    - Test failure triage and prioritization
-    - Quality assurance reporting and metrics
-    - Development debugging and issue resolution
-    - Regression analysis and trend monitoring
+    Returns JSON array with:
+    - Test execution status and success indicators
     - Test failure investigation & root cause analysis
-    - Test infrastructure health monitoring
-    
-    Returns:
-        JSON string containing detailed failure report with:
-        - Test execution status and success indicators
-        - Json array of failed test cases with full diagnostic information
-        - Error categorization for efficient debugging workflows
-        - Suggested fixes and mitigation strategies based on the test failure history analysis
-        - Is same testcase failed before or not if failed before then provide the fail history of the testcase
-        
-    API Endpoint:
-        GET /api/v1/public/test-report/failed-test-cases/{project_id}
-        
-    Project Scope:
-        dataplatform-reporting (ID: 0a180944-8df0-4fc5-9f38-98a36bfda85c)
-        
-    Authentication:
-        Requires valid Ordino-Key with test report access permissions
+    - Suggested fixes and mitigation strategies based on test failure history
+    - Recurring failure status and tester notes
     """
-    return result_client.get_test_failures()
+    import json
+    
+    # Get all projects to find the matching project ID
+    projects_json = result_client.get_projects()
+    projects = json.loads(projects_json)
+    
+    # Find project by name
+    project_id = None
+    for project in projects:
+        if project.get("name") == project_name:
+            project_id = project.get("id")
+            break
+    
+    if not project_id:
+        return json.dumps({
+            "error": f"Project '{project_name}' not found",
+            "available_projects": [p.get("name") for p in projects]
+        })
+    
+    # Get failures for the specific project
+    return result_client.get_test_failures(project_id)
+    
 
 @mcp.tool()
 def save_failure_to_db(test_case: str, error: str, stack_trace: str = "", file_path: str = "", failed_step: str = "") -> str:
