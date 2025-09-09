@@ -32,32 +32,17 @@ def add(digit1: int, digit2: int) -> int:
 @mcp.tool()
 def get_projects() -> str:
     """
-    Retrieves all active projects from the GrubTech testing platform.
-    
-    This function provides comprehensive project information including:
-    - Project metadata (ID, name, partner/team associations)
-    - Testing configuration (platform, GUI, API, mobile capabilities)
-    - Repository integration details
-    - Feature flags and example ordino dev portal project settings
-    
-    Use cases:
-    - Organization level projects discovery
-    - Team level project listing
-    - Project level identity management
-    - Project information search
-    - Project active status monitoring
-    - Configuration auditing and compliance checks
-    - Integration setup validation
-    - Test environment preparation & Ordino Dev Portal Settings
+    Get all active projects from GrubTech testing platform.
     
     Returns:
-        JSON string containing array of project objects with full configuration details
+        JSON array with:
         
-    API Endpoint: 
-        GET /api/v1/project-external
+        📋 Project Information:
+        - Project ID, name, partner/team associations
         
-    Authentication:
-        Requires valid Ordino-Key header for API access
+        🔧 Technical Capabilities:
+        - Platform, GUI, API, mobile testing configuration
+        - Repository integration details
     """
     return result_client.get_projects()
     
