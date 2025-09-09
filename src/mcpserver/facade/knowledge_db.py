@@ -49,9 +49,7 @@ class LightweightKnowledgeDB:
             "timestamp": datetime.now().isoformat(),
             "status": failure_data.get("status", "failed"),
             "filePath": failure_data.get("filePath", ""),
-            "failedStep": failure_data.get("failedStep", ""),
-            "isBug": failure_data.get("isBug", None),  # Manual sign-off by tester
-            "tester_notes": []  # Initialize as empty array for tester notes
+            "failedStep": failure_data.get("failedStep", "")
         }
         
         # Load existing testcase data or create new
@@ -113,7 +111,9 @@ class LightweightKnowledgeDB:
                     existing_failure["recent_occurrences"].append({
                         "timestamp": current_time.isoformat(),
                         "error": error,
-                        "stackTrace": failure_data.get("stackTrace", "")
+                        "stackTrace": failure_data.get("stackTrace", ""),
+                        "isBug": None,
+                        "tester_notes": []
                     })
                     # Keep only last 10 occurrences
                     existing_failure["recent_occurrences"] = existing_failure["recent_occurrences"][-10:]
@@ -131,7 +131,9 @@ class LightweightKnowledgeDB:
                 "recent_occurrences": [{
                     "timestamp": datetime.now().isoformat(),
                     "error": error,
-                    "stackTrace": failure_data.get("stackTrace", "")
+                    "stackTrace": failure_data.get("stackTrace", ""),
+                    "isBug": None,
+                    "tester_notes": []
                 }]
             })
             testcase_data["failure_history"].append(new_failure_entry)
@@ -328,32 +330,27 @@ class LightweightKnowledgeDB:
             # Get the failure to update (default to most recent)
             failure = failure_history[failure_index]
             
-            # Update the failure status
-            failure["isBug"] = is_bug
-            failure["bug_status_updated"] = datetime.now().isoformat()
+            # Update the most recent occurrence's bug status
+            recent_occurrences = failure.get("recent_occurrences", [])
+            if recent_occurrences:
+                # Update the most recent occurrence
+                recent_occurrences[-1]["isBug"] = is_bug
+                recent_occurrences[-1]["bug_status_updated"] = datetime.now().isoformat()
             
-            # Initialize tester_notes as array if it doesn't exist
-            if "tester_notes" not in failure:
-                failure["tester_notes"] = []
-            
-            # Add new tester note if provided
-            if tester_notes:
-                # Get the most recent error and stack trace from recent_occurrences
-                recent_error = ""
-                recent_stack_trace = ""
-                if failure.get("recent_occurrences") and len(failure["recent_occurrences"]) > 0:
-                    latest_occurrence = failure["recent_occurrences"][-1]
-                    recent_error = latest_occurrence.get("error", "")
-                    recent_stack_trace = latest_occurrence.get("stackTrace", "")
+            # Add new tester note to the most recent occurrence if provided
+            if tester_notes and recent_occurrences:
+                latest_occurrence = recent_occurrences[-1]
+                
+                # Initialize tester_notes as array if it doesn't exist in the occurrence
+                if "tester_notes" not in latest_occurrence:
+                    latest_occurrence["tester_notes"] = []
                 
                 note_entry = {
                     "timestamp": datetime.now().isoformat(),
                     "note": tester_notes,
-                    "classification": "bug" if is_bug else "not_bug",
-                    "error": recent_error,  # Include most recent error for reference
-                    "stackTrace": recent_stack_trace  # Include most recent stack trace for reference
+                    "classification": "bug" if is_bug else "not_bug"
                 }
-                failure["tester_notes"].append(note_entry)
+                latest_occurrence["tester_notes"].append(note_entry)
             
             # Save the updated testcase data
             with open(testcase_file, 'w', encoding='utf-8') as f:
@@ -387,7 +384,13 @@ class LightweightKnowledgeDB:
             
             for failure in testcase_data.get("failure_history", []):
                 stats["total_failures"] += 1
-                is_bug = failure.get("isBug")
+                
+                # Check isBug status in recent occurrences
+                recent_occurrences = failure.get("recent_occurrences", [])
+                is_bug = None
+                if recent_occurrences:
+                    # Get the most recent occurrence's bug status
+                    is_bug = recent_occurrences[-1].get("isBug")
                 
                 if is_bug is True:
                     stats["classified_as_bugs"] += 1

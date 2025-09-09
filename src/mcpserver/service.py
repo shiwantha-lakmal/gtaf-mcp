@@ -97,6 +97,81 @@ def get_failures_by_project(project_name: str) -> str:
     
 
 @mcp.tool()
+def get_knowledge_db_documents(partial_testcase_name: str) -> str:
+    """
+    Fetch documents from knowledge database using partial test case name matching.
+    
+    Args:
+        partial_testcase_name: Partial or full test case name to search for
+    
+    Returns JSON array with:
+    - Matched test case documents from knowledge database
+    - Test failure history and occurrence details
+    - Bug classification status and tester notes
+    - Statistical information about failures
+    """
+    import json
+    
+    # Initialize knowledge database
+    from mcpserver.facade.knowledge_db import LightweightKnowledgeDB
+    knowledge_db = LightweightKnowledgeDB()
+    
+    # Search for matching test cases
+    matching_documents = []
+    
+    try:
+        # Get all testcase files
+        testcases_path = knowledge_db.testcases_path
+        
+        if not testcases_path.exists():
+            return json.dumps({
+                "success": False,
+                "message": "Knowledge database testcases directory not found",
+                "matched_documents": []
+            })
+        
+        # Search through all JSON files
+        for json_file in testcases_path.glob("*.json"):
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    document = json.load(f)
+                
+                # Get test case name from document
+                test_case_name = document.get("testCase", "")
+                
+                # Check for partial match (case-insensitive)
+                if partial_testcase_name.lower() in test_case_name.lower():
+                    # Add file information
+                    document["source_file"] = json_file.name
+                    document["matched_on"] = test_case_name
+                    matching_documents.append(document)
+                    
+            except (json.JSONDecodeError, IOError) as e:
+                # Skip files that can't be read or parsed
+                continue
+        
+        # Sort by last_updated (most recent first)
+        matching_documents.sort(
+            key=lambda x: x.get("last_updated", ""), 
+            reverse=True
+        )
+        
+        return json.dumps({
+            "success": True,
+            "search_term": partial_testcase_name,
+            "total_matches": len(matching_documents),
+            "matched_documents": matching_documents
+        }, indent=2)
+        
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "search_term": partial_testcase_name,
+            "matched_documents": []
+        })
+
+@mcp.tool()
 def process_and_save_all_failures() -> str:
     """
     Get all current test failures from the main API and save them to the knowledge database.
