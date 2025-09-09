@@ -221,34 +221,20 @@ def generate_test_failure_analysis_report(report_format: str = "markdown", inclu
         # Generate report data
         report_data = _generate_report_data(failures_data, include_detailed_analysis)
         
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
         if report_format.lower() == "markdown":
             # Generate markdown report
             report_content = _generate_markdown_report(report_data)
-            
-            # Save report to file
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"test_failure_analysis_report_{timestamp}.md"
             file_path = os.path.join("src/resources/template/rca", filename)
             
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        elif report_format.lower() == "html":
+            # Generate HTML report
+            report_content = _generate_html_report(report_data)
+            filename = f"test_failure_analysis_report_{timestamp}.html"
+            file_path = os.path.join("src/resources/template/rca", filename)
             
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(report_content)
-            
-            return json.dumps({
-                "success": True,
-                "message": "Test failure analysis report generated successfully",
-                "report_path": file_path,
-                "report_format": report_format,
-                "timestamp": timestamp,
-                "summary": {
-                    "total_failures": report_data.get("total_failures", 0),
-                    "critical_issues": report_data.get("critical_issues", 0),
-                    "affected_modules": len(report_data.get("modules", [])),
-                    "root_causes": len(report_data.get("root_causes", []))
-                }
-            }, indent=2)
         else:
             # Return JSON format
             return json.dumps({
@@ -257,6 +243,28 @@ def generate_test_failure_analysis_report(report_format: str = "markdown", inclu
                 "report_format": "json",
                 "data": report_data
             }, indent=2)
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        # Save report to file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(report_content)
+        
+        return json.dumps({
+            "success": True,
+            "message": f"Test failure analysis report generated successfully",
+            "report_path": file_path,
+            "report_format": report_format,
+            "timestamp": timestamp,
+            "file_url": f"file://{os.path.abspath(file_path)}",
+            "summary": {
+                "total_failures": report_data.get("total_failures", 0),
+                "critical_issues": report_data.get("critical_issues", 0),
+                "affected_modules": len(report_data.get("modules", [])),
+                "root_causes": report_data.get("root_causes_count", 0)
+            }
+        }, indent=2)
             
     except Exception as e:
         return json.dumps({
@@ -429,7 +437,7 @@ def _generate_markdown_report(report_data):
     from datetime import datetime
     
     # Read the markdown template
-    template_path = "src/resources/template/rca/test_failure_analysis.md"
+    template_path = "src/resources/template/rca/template_test_failure_analysis.md"
     
     try:
         with open(template_path, 'r', encoding='utf-8') as f:
@@ -576,3 +584,204 @@ def _generate_failure_distribution(modules):
     for module in modules:
         distribution += f"- **{module['name']}:** {module['failures']} failures ({module['percentage']}%)\n"
     return distribution
+
+def _generate_html_report(report_data):
+    """Generate HTML report from template."""
+    from datetime import datetime
+    
+    # Read the HTML template
+    template_path = "src/resources/template/rca/template_test_failure_analysis.html"
+    
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+    except FileNotFoundError:
+        # Fallback HTML template if file not found
+        template = _get_fallback_html_template()
+    
+    # Generate module breakdown table rows
+    module_table_rows = ""
+    for module in report_data["modules"]:
+        status_class = "critical" if module["status"] == "Critical" else "warning" if module["status"] == "Warning" else "info"
+        status_emoji = "❌" if module["status"] == "Critical" else "⚠️" if module["status"] == "Warning" else "ℹ️"
+        module_table_rows += f'''
+                    <tr>
+                        <td><strong>{module['name']}</strong></td>
+                        <td>{module['failures']}</td>
+                        <td>{module['percentage']}%</td>
+                        <td><span class="status-badge {status_class}">{status_emoji} {module['status']}</span></td>
+                        <td>{module['impact']}</td>
+                    </tr>'''
+    
+    # Generate service health rows
+    service_health_rows = ""
+    for service in report_data["service_health"]:
+        if "Working" in service["status"]:
+            status_emoji = "✅"
+            status_class = "success"
+        elif "CRITICAL" in service["status"]:
+            status_emoji = "❌"
+            status_class = "critical"
+        else:
+            status_emoji = "⚠️"
+            status_class = "warning"
+        
+        service_health_rows += f'''
+                    <tr>
+                        <td>{service['service']}</td>
+                        <td><span class="status-badge {status_class}">{status_emoji} {service['status']}</span></td>
+                        <td>{service['evidence']}</td>
+                        <td>{service['impact']}</td>
+                    </tr>'''
+    
+    # Generate action items HTML
+    priority_1_actions = "\\n".join([f"<li>{action}</li>" for action in report_data["action_items"]["immediate"]])
+    priority_2_actions = "\\n".join([f"<li>{action}</li>" for action in report_data["action_items"]["short_term"]])
+    priority_3_actions = "\\n".join([f"<li>{action}</li>" for action in report_data["action_items"]["long_term"]])
+    
+    # Replace template variables
+    replacements = {
+        "{current_time}": report_data["report_date"],
+        "{total_failures}": str(report_data["total_failures"]),
+        "{module_count}": str(len(report_data["modules"])),
+        "{impact_summary}": report_data["impact_summary"],
+        "{primary_root_cause}": report_data["primary_root_cause"],
+        "{failed_test_name}": report_data["failed_test_name"],
+        "{failed_test_file}": report_data["failed_test_file"],
+        "{primary_error}": report_data["primary_error"],
+        "{cascade_impact}": report_data["cascade_impact"],
+        "{error_translation}": report_data["error_translation"],
+        "{module_table_rows}": module_table_rows,
+        "{service_health_rows}": service_health_rows,
+        "{priority_1_actions}": priority_1_actions,
+        "{priority_2_actions}": priority_2_actions,
+        "{priority_3_actions}": priority_3_actions,
+        "{report_timestamp}": datetime.now().strftime('%Y%m%d-%H%M%S'),
+        "{root_causes_count}": str(report_data["root_causes_count"]),
+        "{affected_modules_count}": str(report_data["affected_modules_count"])
+    }
+    
+    # Apply all replacements
+    for placeholder, value in replacements.items():
+        template = template.replace(placeholder, str(value))
+    
+    return template
+
+def _get_fallback_html_template():
+    """Fallback HTML template if template file is not found."""
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrubTech Test Failure Analysis Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; margin-bottom: 30px; text-align: center; }
+        .header h1 { font-size: 2.5em; color: #d32f2f; margin-bottom: 10px; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 0.9em; font-weight: bold; margin: 5px; }
+        .critical { background: #ffebee; color: #d32f2f; }
+        .warning { background: #fff3e0; color: #f57c00; }
+        .info { background: #e3f2fd; color: #1976d2; }
+        .success { background: #e8f5e8; color: #388e3c; }
+        .card { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 25px; border-left: 5px solid #667eea; }
+        .card.critical { border-left-color: #d32f2f; }
+        .card h2 { color: #333; margin-bottom: 15px; font-size: 1.5em; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-box h4 { font-size: 2.5em; margin-bottom: 5px; }
+        .failure-table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden; }
+        .failure-table th { background: #667eea; color: white; padding: 15px; text-align: left; }
+        .failure-table td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+        .action-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .action-item { background: white; padding: 20px; border-radius: 10px; border-left: 4px solid #f57c00; }
+        .action-item.priority-1 { border-left-color: #d32f2f; }
+        .action-item.priority-2 { border-left-color: #f57c00; }
+        .action-item.priority-3 { border-left-color: #1976d2; }
+        .footer { text-align: center; padding: 30px; color: rgba(255, 255, 255, 0.8); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐛 GrubTech Test Failure Analysis</h1>
+            <p>Critical System Failure - Complete Test Suite Breakdown</p>
+            <div>
+                <span class="status-badge critical">🔴 CRITICAL</span>
+                <span class="status-badge warning">⚠️ PRODUCTION RISK</span>
+                <span class="status-badge info">📊 {total_failures} FAILURES</span>
+            </div>
+            <p>Generated: <strong>{current_time}</strong> | Environment: <strong>grubcenter.staging.grubtech.io</strong></p>
+        </div>
+
+        <div class="card critical">
+            <h2>📋 Executive Summary</h2>
+            <div class="stats-grid">
+                <div class="stat-box"><h4>{total_failures}</h4><p>Total Failed Tests</p></div>
+                <div class="stat-box"><h4>0%</h4><p>Success Rate</p></div>
+                <div class="stat-box"><h4>{root_causes_count}</h4><p>Root Causes</p></div>
+                <div class="stat-box"><h4>{affected_modules_count}</h4><p>Affected Modules</p></div>
+            </div>
+            <p><strong>Impact:</strong> {impact_summary}</p>
+        </div>
+
+        <div class="card critical">
+            <h2>🔍 Root Cause Analysis</h2>
+            <h3>Primary Root Cause: {primary_root_cause}</h3>
+            <ul>
+                <li><strong>Failed Test:</strong> {failed_test_name}</li>
+                <li><strong>File:</strong> {failed_test_file}</li>
+                <li><strong>Error:</strong> {primary_error}</li>
+                <li><strong>Impact:</strong> {cascade_impact}</li>
+            </ul>
+            <p><strong>Translation:</strong> {error_translation}</p>
+        </div>
+
+        <div class="card info">
+            <h2>📊 Failure Breakdown by Module</h2>
+            <table class="failure-table">
+                <thead>
+                    <tr><th>Module</th><th>Failures</th><th>Percentage</th><th>Status</th><th>Impact</th></tr>
+                </thead>
+                <tbody>{module_table_rows}</tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>🏥 Service Health Status</h2>
+            <table class="failure-table">
+                <thead>
+                    <tr><th>Service</th><th>Status</th><th>Evidence</th><th>Impact</th></tr>
+                </thead>
+                <tbody>{service_health_rows}</tbody>
+            </table>
+        </div>
+
+        <div class="card critical">
+            <h2>🔧 Immediate Actions Required</h2>
+            <div class="action-items">
+                <div class="action-item priority-1">
+                    <h3>🚨 Priority 1 - Emergency Fix</h3>
+                    <ul>{priority_1_actions}</ul>
+                </div>
+                <div class="action-item priority-2">
+                    <h3>⚠️ Priority 2 - Code Fix</h3>
+                    <ul>{priority_2_actions}</ul>
+                </div>
+                <div class="action-item priority-3">
+                    <h3>🔍 Priority 3 - Monitoring</h3>
+                    <ul>{priority_3_actions}</ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Status:</strong> 🔴 CRITICAL - Production Risk</p>
+            <p><strong>Report ID:</strong> GTAF-{report_timestamp}</p>
+            <p>This report was generated automatically based on test failure analysis and knowledge database insights.</p>
+        </div>
+    </div>
+</body>
+</html>'''
+
