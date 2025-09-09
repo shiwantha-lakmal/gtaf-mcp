@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from mcpserver.facade import OrdinoResultClient, LightweightKnowledgeDB
+from mcpserver.facade import OrdinoResultClient
 
 mcp = FastMCP("service")
 
@@ -55,8 +55,8 @@ def get_failures_by_project(project_name: str) -> str:
     
     Returns JSON array with:
     - Test execution status and success indicators
-    - Test failure investigation & root cause analysis
-    - Suggested fixes and mitigation strategies based on test failure history
+    - Test failure stack trace & root cause analysis
+    - Suggested fixes based on test failure history
     - Recurring failure status and tester notes
     """
     import json
@@ -65,59 +65,36 @@ def get_failures_by_project(project_name: str) -> str:
     projects_json = result_client.get_projects()
     projects = json.loads(projects_json)
     
-    # Find project by name
+    # Find project by partial name match (case-insensitive)
     project_id = None
+    matched_project = None
     for project in projects:
-        if project.get("name") == project_name:
+        project_full_name = project.get("name", "")
+        # Check for exact match first, then partial match
+        if project_full_name.lower() == project_name.lower():
             project_id = project.get("id")
+            matched_project = project_full_name
+            break
+        elif project_name.lower() in project_full_name.lower():
+            project_id = project.get("id")
+            matched_project = project_full_name
             break
     
     if not project_id:
+        project_list = [p.get("name") for p in projects]
         return json.dumps({
             "error": f"Project '{project_name}' not found",
-            "available_projects": [p.get("name") for p in projects]
+            "message": "Available projects:",
+            "available_projects": project_list,
+            "suggestion": "Use exact or partial project names from the list above"
         })
     
     # Get failures for the specific project
-    return result_client.get_test_failures(project_id)
+    result = result_client.get_test_failures(project_id)
+    result_data = json.loads(result)
+    result_data["matched_project"] = matched_project
+    return json.dumps(result_data)
     
-
-@mcp.tool()
-def save_failure_to_db(test_case: str, error: str, stack_trace: str = "", file_path: str = "", failed_step: str = "") -> str:
-    """
-    Save a test failure to the knowledge database for tracking and analysis.
-    
-    This function allows manual saving of test failures to build historical knowledge:
-    - Tracks recurring failures and patterns
-    - Builds failure frequency statistics
-    - Enables pattern recognition for similar issues
-    - Provides historical context for debugging
-    
-    Args:
-        test_case: Name/description of the failed test case
-        error: Error message or exception details
-        stack_trace: Full stack trace (optional)
-        file_path: Path to the test file (optional)
-        failed_step: Specific step that failed (optional)
-    
-    Returns:
-        JSON string with failure ID and database statistics
-        
-    Example Usage:
-        save_failure_to_db(
-            test_case="Login form validation test",
-            error="Element not found: #login-button",
-            stack_trace="ElementNotFound: Unable to locate element...",
-            file_path="tests/auth/login.test.js",
-            failed_step="click('#login-button')"
-        )
-    """
-    import json
-    
-    # Call the result client method
-    response = result_client.save_failure_to_db(test_case, error, stack_trace, file_path, failed_step)
-    
-    return json.dumps(response, indent=2)
 
 @mcp.tool()
 def process_and_save_all_failures() -> str:

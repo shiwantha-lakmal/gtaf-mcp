@@ -76,55 +76,6 @@ class OrdinoResultClient:
         
         return json.dumps(data, indent=2)
     
-    def save_failure_to_db(self, test_case: str, error: str, stack_trace: str = "", file_path: str = "", failed_step: str = "") -> Dict[Any, Any]:
-        """
-        Save a test failure to the knowledge database for tracking and analysis.
-        
-        Args:
-            test_case: Name/description of the failed test case
-            error: Error message or exception details
-            stack_trace: Full stack trace (optional)
-            file_path: Path to the test file (optional)
-            failed_step: Specific step that failed (optional)
-        
-        Returns:
-            Dictionary with failure ID and database statistics
-        """
-        # Prepare failure data
-        failure_data = {
-            "testCase": test_case,
-            "status": "failed",
-            "error": error,
-            "stackTrace": stack_trace,
-            "filePath": file_path,
-            "failedStep": failed_step
-        }
-        
-        # Save to knowledge database
-        failure_id = self.knowledge_db.save_failure(failure_data)
-        
-        # Get failure history and similar failures
-        failure_history = self.knowledge_db.get_failure_history(failure_id)
-        similar_failures = self.knowledge_db.find_similar_failures(test_case, error)
-        db_stats = self.knowledge_db.get_failure_stats()
-        
-        # Prepare response
-        response = {
-            "success": True,
-            "failure_id": failure_id,
-            "message": f"Failure saved successfully with ID: {failure_id}",
-            "failure_details": {
-                "occurrence_count": failure_history.get("occurrence_count", 1) if failure_history else 1,
-                "is_recurring": failure_history.get("occurrence_count", 1) > 1 if failure_history else False,
-                "similar_failures_found": len(similar_failures),
-                "first_seen": failure_history.get("timestamp") if failure_history else None,
-                "last_seen": failure_history.get("last_seen") if failure_history else None
-            },
-            "knowledge_db_stats": db_stats
-        }
-        
-        return response
-    
     def process_and_save_all_failures(self) -> Dict[Any, Any]:
         """
         Get all current test failures from the main API and save them to the knowledge database.
