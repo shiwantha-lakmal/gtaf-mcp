@@ -1,10 +1,25 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from mcp.server.fastmcp import FastMCP
 from mcpserver.facade import OrdinoResultClient
+from pydantic import BaseModel, Field
+from typing import List
 
 mcp = FastMCP("service")
 
 # Initialize result client
 result_client = OrdinoResultClient()
+
+# Pydantic models for structured responses
+class Project(BaseModel):
+    id: str = Field(..., description="Unique project ID")
+    name: str = Field(..., description="Project name")
+    team: str = Field(..., description="Associated partner/team")
+
+class ProjectList(BaseModel):
+    projects: List[Project]
 
 @mcp.tool()
 def add(digit1: int, digit2: int) -> int:
@@ -30,70 +45,50 @@ def add(digit1: int, digit2: int) -> int:
     return digit1 + digit2
 
 @mcp.tool()
-def get_projects() -> str:
+def get_projects(mode: str = "summary") -> str:
     """
     Get all active projects from GrubTech testing platform.
+    
+    Args:
+        mode: Control level of detail returned
+            - "summary": Return only ID, name, team (default)
+            - "full": Return extended technical details
+    
     Returns:
-        JSON array with:
-        
-        📋 Project Information:
-        - Project ID, name, partner/team associations
-        
-        📡 Technical Capabilities:
-        - Platform, GUI, API, mobile testing configuration
-        - Repository integration details
+        Summary mode: Minimal project metadata for LLM consumption
+        Full mode: Complete project data for debugging
     """
-    return result_client.get_projects()
+    import json
+    
+    raw = result_client.get_projects()
+    if mode == "summary":
+        summary_data = [{"id": p["id"], "name": p["name"]} for p in raw]
+        return json.dumps(summary_data, indent=2)
+    return json.dumps(raw, indent=2)
     
 @mcp.tool()
-def get_failures_by_project(project_name: str) -> str:
+def get_failures_by_project(project_name: str, mode: str = "summary") -> str:
     """
     Get test failure details for a specific project by name.
     
     Args:
         project_name: Name of the project to get failure details for
+        mode: Control level of detail returned
+            - "summary": Return essential failure info to understand situation (default)
+            - "full": Return detailed root cause analysis with complete stack traces
     
-    Returns JSON array with:
-    - Test execution status and success indicators
-    - Test failure stack trace & root cause analysis
-    - Suggested fixes based on test failure history
-    - Recurring failure status and tester notes
+    Returns:
+        Summary mode: Essential test failure details for quick understanding
+        Full mode: Complete failure analysis with stack traces and root cause info
     """
     import json
     
-    # Get all projects to find the matching project ID
-    projects_json = result_client.get_projects()
-    projects = json.loads(projects_json)
+    if mode == "summary":
+        data = result_client.get_failures_summary(project_name)
+    else:
+        data = result_client.get_failures_full(project_name)
     
-    # Find project by partial name match (case-insensitive)
-    project_id = None
-    matched_project = None
-    for project in projects:
-        project_full_name = project.get("name", "")
-        # Check for exact match first, then partial match
-        if project_full_name.lower() == project_name.lower():
-            project_id = project.get("id")
-            matched_project = project_full_name
-            break
-        elif project_name.lower() in project_full_name.lower():
-            project_id = project.get("id")
-            matched_project = project_full_name
-            break
-    
-    if not project_id:
-        project_list = [p.get("name") for p in projects]
-        return json.dumps({
-            "error": f"Project '{project_name}' not found",
-            "message": "Available projects:",
-            "available_projects": project_list,
-            "suggestion": "Use exact or partial project names from the list above"
-        })
-    
-    # Get failures for the specific project
-    result = result_client.get_test_failures(project_id)
-    result_data = json.loads(result)
-    result_data["matched_project"] = matched_project
-    return json.dumps(result_data)
+    return json.dumps(data, indent=2)
     
 
 @mcp.tool()
@@ -174,22 +169,12 @@ def get_knowledge_db_documents(partial_testcase_name: str) -> str:
 @mcp.tool()
 def process_and_save_all_failures() -> str:
     """
-    Get all current test failures from the main API and save them to the knowledge database.
+    Fetch and save test failures to knowledge database.
     
-    This function:
-    - Fetches the latest test failures from the dataplatform-reporting project
-    - Processes each failure and saves it to the knowledge database
-    - Provides summary statistics and insights
-    - Identifies recurring and similar failure patterns
+    Process: fetch, get, summarize, analysis
+    Save: caches, store, persist, knowledgebase
     
-    Use cases:
-    - Bulk import of current test failures into knowledge database
-    - Historical tracking of test suite stability
-    - Pattern analysis for recurring issues
-    - Building failure knowledge base for debugging
-    
-    Returns:
-        JSON string with processing summary and database statistics
+    Returns: Simple success confirmation with project names and case counts only.
     """
     import json
     

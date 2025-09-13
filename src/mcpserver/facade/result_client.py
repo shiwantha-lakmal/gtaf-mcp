@@ -1,6 +1,7 @@
 import requests
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field
 from .knowledge_db import LightweightKnowledgeDB
 
 
@@ -23,13 +24,13 @@ class OrdinoResultClient:
         
         return response.json()
     
-    def get_projects(self) -> str:
+    def get_projects(self) -> List[Dict[str, Any]]:
         """Retrieve all active projects from the GrubTech testing platform."""
         api_key = "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4="
         endpoint = "/project-external"
         
         data = self._make_request(endpoint, api_key)
-        return json.dumps(data, indent=2)
+        return data
     
     def get_test_failures(self, project_id: str = "0a180944-8df0-4fc5-9f38-98a36bfda85c") -> str:
         """Retrieve comprehensive test failure analysis for a specific project."""
@@ -83,29 +84,22 @@ class OrdinoResultClient:
         This function:
         - Fetches the latest test failures from the dataplatform-reporting project
         - Processes each failure and saves it to the knowledge database
-        - Provides summary statistics and insights
-        - Identifies recurring and similar failure patterns
+        - Returns a simple success message with project names and case counts
         
         Returns:
-            Dictionary with processing summary and database statistics
+            Dictionary with success message, project names, and case counts
         """
-        # Get current failures from API
+        # Get all projects to identify project names
+        projects = self.get_projects()
+        project_names = [p.get("name", "Unknown") for p in projects]
+        
+        # Get current failures from API (using default project)
         failures_json = self.get_test_failures()
         failures_data = json.loads(failures_json)
         
-        processing_summary = {
-            "success": True,
-            "processed_failures": [],
-            "statistics": {
-                "total_failures_processed": 0,
-                "new_failures": 0,
-                "recurring_failures": 0,
-                "similar_patterns_found": 0
-            },
-            "insights": []
-        }
-        
         if failures_data.get("isSuccess") and failures_data.get("extraInfo"):
+            total_cases = 0
+            
             for failure in failures_data["extraInfo"]:
                 # Extract failure details
                 test_case = failure.get("testCase", "Unknown Test")
@@ -115,7 +109,7 @@ class OrdinoResultClient:
                 failed_step = failure.get("failedStep", "")
                 
                 # Save to knowledge database
-                failure_id = self.knowledge_db.save_failure({
+                self.knowledge_db.save_failure({
                     "testCase": test_case,
                     "status": failure.get("status", "failed"),
                     "error": error,
@@ -124,62 +118,114 @@ class OrdinoResultClient:
                     "failedStep": failed_step
                 })
                 
-                # Get failure history
-                failure_history = self.knowledge_db.get_failure_history(failure_id)
-                similar_failures = self.knowledge_db.find_similar_failures(test_case, error)
-                
-                # Determine if this is new or recurring
-                is_new = failure_history.get("occurrence_count", 1) == 1
-                is_recurring = failure_history.get("occurrence_count", 1) > 1
-                
-                # Update statistics
-                processing_summary["statistics"]["total_failures_processed"] += 1
-                if is_new:
-                    processing_summary["statistics"]["new_failures"] += 1
-                if is_recurring:
-                    processing_summary["statistics"]["recurring_failures"] += 1
-                if len(similar_failures) > 1:
-                    processing_summary["statistics"]["similar_patterns_found"] += 1
-                
-                # Add to processed failures
-                processed_failure = {
-                    "failure_id": failure_id,
-                    "test_case": test_case[:100] + "..." if len(test_case) > 100 else test_case,
-                    "file_path": file_path,
-                    "occurrence_count": failure_history.get("occurrence_count", 1),
-                    "is_new": is_new,
-                    "is_recurring": is_recurring,
-                    "similar_failures_count": len(similar_failures),
-                    "error_type": error.split('\n')[0][:100] if error else "Unknown"
-                }
-                processing_summary["processed_failures"].append(processed_failure)
+                total_cases += 1
             
-            # Generate insights
-            total_processed = processing_summary["statistics"]["total_failures_processed"]
-            recurring_count = processing_summary["statistics"]["recurring_failures"]
-            similar_patterns = processing_summary["statistics"]["similar_patterns_found"]
-            
-            if recurring_count > 0:
-                processing_summary["insights"].append(
-                    f"Found {recurring_count} recurring failures that need immediate attention"
-                )
-            
-            if similar_patterns > 0:
-                processing_summary["insights"].append(
-                    f"Identified {similar_patterns} failures with similar patterns - potential systemic issues"
-                )
-            
-            if total_processed > 0:
-                recurring_percentage = (recurring_count / total_processed) * 100
-                processing_summary["insights"].append(
-                    f"Recurring failure rate: {recurring_percentage:.1f}% ({recurring_count}/{total_processed})"
-                )
-            
-            # Add overall database statistics
-            processing_summary["knowledge_db_stats"] = self.knowledge_db.get_failure_stats()
+            # Return simple success message
+            return {
+                "success": True,
+                "message": f"Successfully processed and saved {total_cases} test failure cases to knowledge database",
+                "projects_processed": ["dataplatform-reporting"],  # Default project
+                "total_cases_saved": total_cases,
+                "available_projects": project_names
+            }
             
         else:
-            processing_summary["success"] = False
-            processing_summary["message"] = "No failure data available or API call failed"
+            return {
+                "success": False,
+                "message": "No failure data available or API call failed",
+                "projects_processed": [],
+                "total_cases_saved": 0,
+                "available_projects": project_names
+            }
+    
+    def find_project_by_name(self, project_name: str) -> Dict[str, Any]:
+        """Find project by name with partial matching support."""
+        projects = self.get_projects()
         
-        return processing_summary
+        # Find project by partial name match (case-insensitive)
+        for project in projects:
+            project_full_name = project.get("name", "")
+            # Check for exact match first, then partial match
+            if project_full_name.lower() == project_name.lower():
+                return {
+                    "found": True,
+                    "project_id": project.get("id"),
+                    "project_name": project_full_name
+                }
+            elif project_name.lower() in project_full_name.lower():
+                return {
+                    "found": True,
+                    "project_id": project.get("id"),
+                    "project_name": project_full_name
+                }
+        
+        # Project not found
+        project_list = [p.get("name") for p in projects]
+        return {
+            "found": False,
+            "error": f"Project '{project_name}' not found",
+            "available_projects": project_list
+        }
+    
+    def get_failures_summary(self, project_name: str) -> Dict[str, Any]:
+        """Get summarized failure information for a project."""
+        # Find project
+        project_info = self.find_project_by_name(project_name)
+        if not project_info["found"]:
+            return {
+                "error": project_info["error"],
+                "message": "Available projects:",
+                "available_projects": project_info["available_projects"],
+                "suggestion": "Use exact or partial project names from the list above"
+            }
+        
+        # Get failures
+        result = self.get_test_failures(project_info["project_id"])
+        result_data = json.loads(result)
+        
+        # Create summary
+        summary_data = {
+            "matched_project": project_info["project_name"],
+            "total_failures": len(result_data.get("extraInfo", [])),
+            "success": result_data.get("isSuccess", False),
+            "failures": []
+        }
+        
+        # Extract essential failure info
+        for failure in result_data.get("extraInfo", []):
+            summary_failure = {
+                "test_case": failure.get("testCase", "Unknown"),
+                "status": failure.get("status", "failed"),
+                "error": failure.get("error", "").split('\n')[0] if failure.get("error") else "No error message",
+                "file_path": failure.get("filePath", "Unknown"),
+                "failed_step": failure.get("failedStep", "Unknown")
+            }
+            
+            # Add knowledge DB info if available
+            if "knowledgeDB" in failure:
+                kb_info = failure["knowledgeDB"]
+                summary_failure["occurrence_count"] = kb_info.get("occurrence_count", 1)
+                summary_failure["is_recurring"] = kb_info.get("is_recurring", False)
+            
+            summary_data["failures"].append(summary_failure)
+        
+        return summary_data
+    
+    def get_failures_full(self, project_name: str) -> Dict[str, Any]:
+        """Get complete failure information for a project."""
+        # Find project
+        project_info = self.find_project_by_name(project_name)
+        if not project_info["found"]:
+            return {
+                "error": project_info["error"],
+                "message": "Available projects:",
+                "available_projects": project_info["available_projects"],
+                "suggestion": "Use exact or partial project names from the list above"
+            }
+        
+        # Get failures
+        result = self.get_test_failures(project_info["project_id"])
+        result_data = json.loads(result)
+        result_data["matched_project"] = project_info["project_name"]
+        
+        return result_data
