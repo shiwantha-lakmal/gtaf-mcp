@@ -1,6 +1,8 @@
 import requests
 import json
 import os
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List
 from .knowledge_db import LightweightKnowledgeDB
 
@@ -273,6 +275,10 @@ class OrdinoResultClient:
         
         return full_data
     
+    def save_analysis_to_knowledge_db(self, project_name: str, analysis_data: Dict[str, Any]) -> str:
+        """Save analysis results to knowledge database under analysis/{project_name}/ directory."""
+        knowledge_db = LightweightKnowledgeDB()
+        return knowledge_db.save_project_analysis(project_name, analysis_data)
 
     def find_project_by_name(self, project_name: str) -> Dict[str, Any]:
         """Find project by name with partial matching support."""

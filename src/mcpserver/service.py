@@ -190,7 +190,38 @@ def get_latest_result_analysis(project_name: str, mode: str = "summary") -> str:
     
     if mode == "summary":
         data = result_client.get_latest_summary(project_name)
+        # Save summary stats to knowledge database
+        if "error" not in data:  # Only save if no error occurred
+            saved_path = result_client.save_analysis_to_knowledge_db(project_name, data)
+            data["_saved_to_knowledge_db"] = saved_path
     else:
         data = result_client.get_latest_full(project_name)
     
     return json.dumps(data, indent=2)
+
+
+@mcp.tool()
+def cleanup_knowledge_database(random_string: str) -> str:
+    """
+    Completely clean up the knowledge database by removing all stored data.
+    
+    This tool will:
+    - Remove all testcase failure history files
+    - Remove all analysis files and directories
+    - Recreate empty directory structure
+    
+    WARNING: This action is irreversible and will permanently delete all knowledge database content.
+    
+    Args:
+        random_string: Dummy parameter for no-parameter tools
+    
+    Returns:
+        JSON with cleanup statistics and results
+    """
+    import json
+    from mcpserver.facade.knowledge_db import LightweightKnowledgeDB
+    
+    knowledge_db = LightweightKnowledgeDB()
+    cleanup_results = knowledge_db.cleanup_knowledge_db_fully()
+    
+    return json.dumps(cleanup_results, indent=2)

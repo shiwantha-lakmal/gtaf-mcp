@@ -224,6 +224,35 @@ class LightweightKnowledgeDB:
         with open(analysis_file, 'w') as f:
             json.dump(analysis_record, f, indent=2)
     
+    def save_project_analysis(self, project_name: str, analysis_data: Dict[str, Any]) -> str:
+        """Save project-level analysis results to knowledge database."""
+        try:
+            # Create project-specific analysis directory
+            project_analysis_path = self.analysis_path / project_name.replace(" ", "_").replace("-", "_")
+            project_analysis_path.mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"test_analysis_{timestamp}.json"
+            file_path = project_analysis_path / filename
+            
+            # Prepare analysis record
+            analysis_record = {
+                "project_name": project_name,
+                "timestamp": datetime.now().isoformat(),
+                "analysis_type": "latest_result_analysis",
+                "data": analysis_data
+            }
+            
+            # Save to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(analysis_record, f, indent=2, ensure_ascii=False)
+            
+            return str(file_path)
+            
+        except Exception as e:
+            return f"Error saving project analysis: {str(e)}"
+    
     def get_failure_stats(self) -> Dict[str, Any]:
         """Get statistics about failures in the database."""
         total_testcases = len(list(self.testcases_path.glob("*.json")))
@@ -423,3 +452,75 @@ class LightweightKnowledgeDB:
             stats["bug_classification_rate"] = (classified_total / stats["total_failures"]) * 100
         
         return stats
+    
+    def cleanup_knowledge_db_fully(self) -> Dict[str, Any]:
+        """Completely clean up the knowledge database by removing all files and directories.
+        
+        Returns:
+            Dict with cleanup statistics and results
+        """
+        cleanup_stats = {
+            "testcases_removed": 0,
+            "analysis_files_removed": 0,
+            "analysis_directories_removed": 0,
+            "errors": [],
+            "success": True
+        }
+        
+        try:
+            # Clean up testcases directory
+            if self.testcases_path.exists():
+                testcase_files = list(self.testcases_path.glob("*.json"))
+                cleanup_stats["testcases_removed"] = len(testcase_files)
+                
+                for testcase_file in testcase_files:
+                    try:
+                        testcase_file.unlink()
+                    except Exception as e:
+                        cleanup_stats["errors"].append(f"Failed to remove testcase file {testcase_file}: {str(e)}")
+                        cleanup_stats["success"] = False
+            
+            # Clean up analysis directory (including subdirectories)
+            if self.analysis_path.exists():
+                # Count analysis files first
+                analysis_files = list(self.analysis_path.rglob("*.json"))
+                cleanup_stats["analysis_files_removed"] = len(analysis_files)
+                
+                # Count subdirectories (project directories)
+                analysis_dirs = [d for d in self.analysis_path.iterdir() if d.is_dir()]
+                cleanup_stats["analysis_directories_removed"] = len(analysis_dirs)
+                
+                # Remove all files first
+                for item in self.analysis_path.rglob("*"):
+                    try:
+                        if item.is_file():
+                            item.unlink()
+                    except Exception as e:
+                        cleanup_stats["errors"].append(f"Failed to remove file {item}: {str(e)}")
+                        cleanup_stats["success"] = False
+                
+                # Then remove directories (deepest first)
+                for item in sorted(self.analysis_path.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+                    try:
+                        if item.is_dir() and item != self.analysis_path:
+                            item.rmdir()
+                    except Exception as e:
+                        cleanup_stats["errors"].append(f"Failed to remove directory {item}: {str(e)}")
+                        cleanup_stats["success"] = False
+            
+            # Recreate empty directories to maintain structure
+            try:
+                self.testcases_path.mkdir(parents=True, exist_ok=True)
+                self.analysis_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                cleanup_stats["errors"].append(f"Failed to recreate directories: {str(e)}")
+                cleanup_stats["success"] = False
+            
+            cleanup_stats["message"] = "Knowledge database cleanup completed successfully" if cleanup_stats["success"] else "Knowledge database cleanup completed with errors"
+            
+        except Exception as e:
+            cleanup_stats["success"] = False
+            cleanup_stats["errors"].append(f"General cleanup error: {str(e)}")
+            cleanup_stats["message"] = f"Knowledge database cleanup failed: {str(e)}"
+        
+        return cleanup_stats
