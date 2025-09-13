@@ -27,15 +27,19 @@ class OrdinoResultClient:
     
     def get_projects(self) -> List[Dict[str, Any]]:
         """Retrieve all active projects from the GrubTech testing platform."""
-        api_key = os.getenv("ORDINO_CLI_API_KEY", "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4=")
+        api_key = os.getenv("ORDINO_CLI_API_KEY")
+        if not api_key:
+            raise ValueError("ORDINO_CLI_API_KEY environment variable is required")
         endpoint = "/project-external"
         
         data = self._make_request(endpoint, api_key)
         return data
     
-    def get_test_failures(self, project_id: str = "0a180944-8df0-4fc5-9f38-98a36bfda85c") -> str:
+    def get_test_failures(self, project_id: str) -> str:
         """Retrieve comprehensive test failure analysis for a specific project."""
-        api_key = os.getenv("ORDINO_SYSTEM_API_KEY", "qlH69ODS7QFSjs/XHbA4ViNNZv1EQK0uNNkUGDnRCBk=")
+        api_key = os.getenv("ORDINO_SYSTEM_API_KEY")
+        if not api_key:
+            raise ValueError("ORDINO_SYSTEM_API_KEY environment variable is required")
         endpoint = f"/public/test-report/failed-test-cases/{project_id}"
         
         data = self._make_request(endpoint, api_key)
@@ -196,7 +200,9 @@ class OrdinoResultClient:
     
     def get_latest_result_analysis(self, project_id: str) -> Dict[str, Any]:
         """Get latest test result analysis from test report endpoint using project ID."""
-        api_key = os.getenv("ORDINO_SYSTEM_API_KEY", "qlH69ODS7QFSjs/XHbA4ViNNZv1EQK0uNNkUGDnRCBk=")
+        api_key = os.getenv("ORDINO_SYSTEM_API_KEY")
+        if not api_key:
+            raise ValueError("ORDINO_SYSTEM_API_KEY environment variable is required")
         endpoint = f"/public/test-report/test-setup/{project_id}"
         
         try:
