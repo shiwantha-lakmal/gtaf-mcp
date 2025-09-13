@@ -4,22 +4,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mcp.server.fastmcp import FastMCP
 from mcpserver.facade import OrdinoResultClient
-from pydantic import BaseModel, Field
-from typing import List
 
 mcp = FastMCP("service")
 
 # Initialize result client
 result_client = OrdinoResultClient()
-
-# Pydantic models for structured responses
-class Project(BaseModel):
-    id: str = Field(..., description="Unique project ID")
-    name: str = Field(..., description="Project name")
-    team: str = Field(..., description="Associated partner/team")
-
-class ProjectList(BaseModel):
-    projects: List[Project]
 
 @mcp.tool()
 def add(digit1: int, digit2: int) -> int:
@@ -51,7 +40,7 @@ def get_projects(mode: str = "summary") -> str:
     
     Args:
         mode: Control level of detail returned
-            - "summary": Return only ID, name, team (default)
+            - "summary": Return only ID and name (default)
             - "full": Return extended technical details
     
     Returns:
@@ -182,3 +171,26 @@ def process_and_save_all_failures() -> str:
     processing_summary = result_client.process_and_save_all_failures()
     
     return json.dumps(processing_summary, indent=2)
+
+@mcp.tool()
+def get_latest_result_analysis(project_name: str, mode: str = "summary") -> str:
+    """
+    Get latest test result analysis from test report with summary and full detail modes.
+    
+    Args:
+        project_name: Project name or keyword to find matching test setup
+        mode: Analysis mode - "summary" for key metrics or "full" for complete details
+    
+    Analysis: ["test", "results", "metrics", "failures", "report"] # ✅ test execution analysis
+    Summary: ["overview", "stats", "highlights", "brief", "key"] # ✅ concise metrics & insights
+    
+    Returns: JSON with test metrics, pass rates, failure highlights - optimized for low LLM consumption
+    """
+    import json
+    
+    if mode == "summary":
+        data = result_client.get_latest_summary(project_name)
+    else:
+        data = result_client.get_latest_full(project_name)
+    
+    return json.dumps(data, indent=2)

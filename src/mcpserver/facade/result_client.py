@@ -1,7 +1,6 @@
 import requests
 import json
 from typing import Dict, Any, List
-from pydantic import BaseModel, Field
 from .knowledge_db import LightweightKnowledgeDB
 
 
@@ -11,7 +10,6 @@ class OrdinoResultClient:
     BASE_URL = "https://dev-portal.ordino.ai/api/v1"
     
     def __init__(self):
-        self.headers = {}
         self.knowledge_db = LightweightKnowledgeDB()
     
     def _make_request(self, endpoint: str, api_key: str) -> Dict[Any, Any]:
@@ -128,16 +126,153 @@ class OrdinoResultClient:
                 "total_cases_saved": total_cases,
                 "available_projects": project_names
             }
-            
         else:
             return {
+            "success": False,
+            "message": "No failure data available or API call failed",
+            "projects_processed": [],
+            "total_cases_saved": 0,
+            "available_projects": project_names
+        }
+    
+    def get_latest_result_analysis(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
+        """Get latest test result analysis from test report endpoint."""
+        api_key = "YoXGKROxf/p43uOoTMhUVWusceS1Y+5VoaQP54sJU+I="
+        endpoint = f"/public/test-report/test-setup/{test_setup_id}"
+        
+        try:
+            data = self._make_request(endpoint, api_key)
+            return data
+        except Exception as e:
+            return {
                 "success": False,
-                "message": "No failure data available or API call failed",
-                "projects_processed": [],
-                "total_cases_saved": 0,
-                "available_projects": project_names
+                "error": str(e),
+                "test_setup_id": test_setup_id
             }
     
+    def get_latest_result_summary(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
+        """Get summarized latest test result analysis optimized for LLM consumption."""
+        raw_data = self.get_latest_result_analysis(test_setup_id)
+        
+        if not raw_data.get("success", True):
+            return raw_data
+        
+        # Extract key metrics for summary - optimized for low LLM consumption
+        summary = {
+            "setup_id": test_setup_id,
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "pass_rate": 0.0,
+            "failures": []  # Top 3 failures only for minimal token usage
+        }
+        
+        # Parse test results from the hierarchical structure
+        def count_tests_recursive(node):
+            """Recursively count tests in the hierarchical structure."""
+            total = 0
+            passed = 0
+            failed = 0
+            failures = []
+            
+            # Check if this node has test details
+            if "testDetails" in node and isinstance(node["testDetails"], list):
+                for test in node["testDetails"]:
+                    total += 1
+                    if test.get("state") == "passed":
+                        passed += 1
+                    elif test.get("state") == "failed":
+                        failed += 1
+                        # Add to failures list (limit to 3 for low LLM consumption)
+                        if len(failures) < 3:
+                            error_msg = test.get("errorMessage", "No error message")
+                            # Truncate long error messages to first line for brevity
+                            if error_msg and len(error_msg) > 100:
+                                error_msg = error_msg.split('\n')[0][:100] + "..."
+                            
+                            failures.append({
+                                "name": test.get("testTitle", "Unknown")[:50],  # Truncate long names
+                                "error": error_msg,
+                                "duration": test.get("duration")
+                            })
+            
+            # Recursively process children
+            if "children" in node and isinstance(node["children"], list):
+                for child in node["children"]:
+                    child_total, child_passed, child_failed, child_failures = count_tests_recursive(child)
+                    total += child_total
+                    passed += child_passed
+                    failed += child_failed
+                    # Add child failures if we haven't reached the limit
+                    for failure in child_failures:
+                        if len(failures) < 3:
+                            failures.append(failure)
+            
+            return total, passed, failed, failures
+        
+        # Count tests from the root level
+        if "label" in raw_data:  # This is the hierarchical test structure
+            total_tests, passed_tests, failed_tests, recent_failures = count_tests_recursive(raw_data)
+            summary["total"] = total_tests
+            summary["passed"] = passed_tests
+            summary["failed"] = failed_tests
+            summary["failures"] = recent_failures
+            
+            # Calculate pass rate
+            if summary["total"] > 0:
+                summary["pass_rate"] = round((summary["passed"] / summary["total"]) * 100, 1)  # 1 decimal for brevity
+        
+        return summary
+    
+    def get_latest_result_full(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
+        """Get complete latest test result analysis with full details."""
+        return self.get_latest_result_analysis(test_setup_id)
+    
+    def get_latest_summary(self, project_name: str) -> Dict[str, Any]:
+        """Get summarized latest test result analysis for a project."""
+        # Find project
+        project_info = self.find_project_by_name(project_name)
+        if not project_info["found"]:
+            return {
+                "error": project_info["error"],
+                "message": "Available projects:",
+                "available_projects": project_info["available_projects"],
+                "suggestion": "Use exact or partial project names from the list above"
+            }
+        
+        # Use project ID as test setup ID
+        test_setup_id = project_info["project_id"]
+        summary_data = self.get_latest_result_summary(test_setup_id)
+        
+        # Add project context
+        summary_data["matched_project"] = project_info["project_name"]
+        summary_data["search_term"] = project_name
+        
+        return summary_data
+    
+    def get_latest_full(self, project_name: str) -> Dict[str, Any]:
+        """Get complete latest test result analysis for a project."""
+        # Find project
+        project_info = self.find_project_by_name(project_name)
+        if not project_info["found"]:
+            return {
+                "error": project_info["error"],
+                "message": "Available projects:",
+                "available_projects": project_info["available_projects"],
+                "suggestion": "Use exact or partial project names from the list above"
+            }
+        
+        # Use project ID as test setup ID
+        test_setup_id = project_info["project_id"]
+        full_data = self.get_latest_result_full(test_setup_id)
+        
+        # Add project context
+        full_data["matched_project"] = project_info["project_name"]
+        full_data["search_term"] = project_name
+        
+        return full_data
+    
+
     def find_project_by_name(self, project_name: str) -> Dict[str, Any]:
         """Find project by name with partial matching support."""
         projects = self.get_projects()
