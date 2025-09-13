@@ -156,7 +156,7 @@ def get_knowledge_db_documents(partial_testcase_name: str) -> str:
         })
 
 @mcp.tool()
-def process_and_save_all_failures(random_string: str) -> str:
+def process_and_save_all_failures() -> str:
     """
     Fetch and save test failures to knowledge database.
     
@@ -210,7 +210,7 @@ def get_latest_result_analysis(project_name: str, mode: str = "summary") -> str:
 
 
 @mcp.tool()
-def cleanup_knowledge_database(random_string: str) -> str:
+def cleanup_knowledge_database() -> str:
     """
     Fully clean knowledge database - removes all testcases, analysis files & directories.
     

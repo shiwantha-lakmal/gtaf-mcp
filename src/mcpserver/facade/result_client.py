@@ -136,10 +136,10 @@ class OrdinoResultClient:
                 "available_projects": project_names
             }
     
-    def get_latest_result_analysis(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
-        """Get latest test result analysis from test report endpoint."""
+    def get_latest_result_analysis(self, project_id: str) -> Dict[str, Any]:
+        """Get latest test result analysis from test report endpoint using project ID."""
         api_key = os.getenv("ORDINO_SYSTEM_API_KEY", "qlH69ODS7QFSjs/XHbA4ViNNZv1EQK0uNNkUGDnRCBk=")
-        endpoint = f"/public/test-report/test-setup/{test_setup_id}"
+        endpoint = f"/public/test-report/test-setup/{project_id}"
         
         try:
             data = self._make_request(endpoint, api_key)
@@ -148,19 +148,19 @@ class OrdinoResultClient:
             return {
                 "success": False,
                 "error": str(e),
-                "test_setup_id": test_setup_id
+                "project_id": project_id
             }
     
-    def get_latest_result_summary(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
+    def get_latest_result_summary(self, project_id: str) -> Dict[str, Any]:
         """Get summarized latest test result analysis optimized for LLM consumption."""
-        raw_data = self.get_latest_result_analysis(test_setup_id)
+        raw_data = self.get_latest_result_analysis(project_id)
         
         if not raw_data.get("success", True):
             return raw_data
         
         # Extract key metrics for summary - optimized for low LLM consumption
         summary = {
-            "setup_id": test_setup_id,
+            "setup_id": project_id,
             "total": 0,
             "passed": 0,
             "failed": 0,
@@ -225,9 +225,9 @@ class OrdinoResultClient:
         
         return summary
     
-    def get_latest_result_full(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
+    def get_latest_result_full(self, project_id: str) -> Dict[str, Any]:
         """Get complete latest test result analysis with full details."""
-        return self.get_latest_result_analysis(test_setup_id)
+        return self.get_latest_result_analysis(project_id)
     
     def get_latest_summary(self, project_name: str) -> Dict[str, Any]:
         """Get summarized latest test result analysis for a project."""
@@ -241,9 +241,9 @@ class OrdinoResultClient:
                 "suggestion": "Use exact or partial project names from the list above"
             }
         
-        # Use project ID as test setup ID
-        test_setup_id = project_info["project_id"]
-        summary_data = self.get_latest_result_summary(test_setup_id)
+        # Use project ID for test setup
+        project_id = project_info["project_id"]
+        summary_data = self.get_latest_result_summary(project_id)
         
         # Add project context
         summary_data["matched_project"] = project_info["project_name"]
@@ -263,9 +263,9 @@ class OrdinoResultClient:
                 "suggestion": "Use exact or partial project names from the list above"
             }
         
-        # Use project ID as test setup ID
-        test_setup_id = project_info["project_id"]
-        full_data = self.get_latest_result_full(test_setup_id)
+        # Use project ID for test setup
+        project_id = project_info["project_id"]
+        full_data = self.get_latest_result_full(project_id)
         
         # Add project context
         full_data["matched_project"] = project_info["project_name"]
