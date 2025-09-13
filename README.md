@@ -1,6 +1,6 @@
-# GrubTech Automation Framework MCP Server
+# Test Automation Framework MCP Server
 
-A comprehensive Model Context Protocol (MCP) server for GrubTech's test automation framework, providing AI-powered access to test results, failure analysis, and knowledge database management.
+A comprehensive Model Context Protocol (MCP) server for test automation frameworks, providing AI-powered access to test results, failure analysis, and knowledge database management.
 
 ## 🚀 Features
 
@@ -26,7 +26,7 @@ A comprehensive Model Context Protocol (MCP) server for GrubTech's test automati
 ### Prerequisites
 
 - Python 3.12 or higher
-- Access to GrubTech API endpoints
+- Access to testing platform API endpoints
 - Valid API keys for Ordino services
 
 ### Install from Source
@@ -105,7 +105,7 @@ Performs mathematical addition of two integers.
 
 #### `get_projects(mode: str = "summary") -> str`
 
-Get all active projects from GrubTech testing platform.
+Get all active projects from testing platform.
 
 **Parameters:**
 - `mode`: Detail level (`"summary"` or `"full"`)
@@ -127,7 +127,7 @@ Get all active projects from GrubTech testing platform.
 [
   {
     "id": "23173222-4ecd-4b1c-8024-b83523f4572b",
-    "name": "grubcenter-3.0-portal"
+    "name": "web-portal-app"
   },
   {
     "id": "b4d4abee-6eab-48f1-b92c-55ce73fedc9c", 
@@ -135,7 +135,7 @@ Get all active projects from GrubTech testing platform.
   },
   {
     "id": "0a180944-8df0-4fc5-9f38-98a36bfda85c",
-    "name": "dataplatform-reporting"
+    "name": "reporting-service"
   }
 ]
 ```
@@ -170,7 +170,7 @@ Get test failure details for a specific project by name.
 **Response:**
 ```json
 {
-  "matched_project": "grubcenter-3.0-portal",
+  "matched_project": "web-portal-app",
   "total_failures": 5,
   "success": false,
   "failures": [
@@ -290,12 +290,12 @@ Fetch and save test failures to knowledge database for specific project.
 {
   "success": true,
   "message": "Processed 15 cases",
-  "projects_processed": ["grubcenter-3.0-portal"],
+  "projects_processed": ["web-portal-app"],
   "total_cases_saved": 15,
   "available_projects": [
-    "grubcenter-3.0-portal",
+    "web-portal-app",
     "ui-integration-platform", 
-    "dataplatform-reporting"
+    "reporting-service"
   ]
 }
 ```
@@ -464,7 +464,7 @@ knowledge_db/
 
 All project-aware tools support flexible project selection:
 
-- **Exact Match**: `"grubcenter-3.0-portal"`
+- **Exact Match**: `"web-portal-app"`
 - **Partial Match**: `"portal"`, `"reporting"`, `"integration"`
 - **Case Insensitive**: `"PORTAL"`, `"Portal"`, `"portal"`
 
@@ -621,4 +621,4 @@ mcp dev src/mcpserver/service.py
 
 ---
 
-**Built with ❤️ for GrubTech Test Automation**
+**Built with ❤️ for Ordino Test Automation**

@@ -1,7 +1,7 @@
 [project]
 name = "gtaf-mcp"
 version = "0.1.0"
-description = "grubtech-mcp for test automation"
+description = "Test Automation Framework MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

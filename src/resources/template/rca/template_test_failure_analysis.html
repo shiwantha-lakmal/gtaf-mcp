@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Datalake Test Failure Analysis Report</title>
+    <title>Test Failure Analysis Report</title>
     <style>
         * {
             margin: 0;
@@ -267,7 +267,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🐛 Datalake Test Failure Analysis</h1>
+            <h1>🐛 Test Failure Analysis</h1>
             <p style="font-size: 1.1em; color: #666; margin-bottom: 15px;">
                 Critical System Failure - Complete Test Suite Breakdown
             </p>
@@ -278,7 +278,7 @@
             </div>
             <p style="margin-top: 15px; color: #888;">
                 Generated: <strong>{current_time}</strong> | 
-                Environment: <strong>grubcenter.staging.grubtech.io</strong>
+                Environment: <strong>staging.testplatform.io</strong>
             </p>
         </div>
 
@@ -320,9 +320,9 @@
 
             <h3>Stack Trace Analysis</h3>
             <div class="code-block">
-Fn (https://grubcenter.staging.grubtech.io/__cypress/runner/cypress_runner.js:121560:66)
-    at Context.then (https://grubcenter.staging.grubtech.io/__cypress/runner/cypress_runner.js:121811:21)
-    at wrapped (https://grubcenter.staging.grubtech.io/__cypress/runner/cypress_runner.js:141517:19)
+Fn (https://staging.testplatform.io/__cypress/runner/cypress_runner.js:121560:66)
+    at Context.then (https://staging.testplatform.io/__cypress/runner/cypress_runner.js:121811:21)
+    at wrapped (https://staging.testplatform.io/__cypress/runner/cypress_runner.js:141517:19)
             </div>
             <p><strong>Translation:</strong> {error_translation}</p>
         </div>

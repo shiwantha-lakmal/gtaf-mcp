@@ -26,7 +26,7 @@ class OrdinoResultClient:
         return response.json()
     
     def get_projects(self) -> List[Dict[str, Any]]:
-        """Retrieve all active projects from the GrubTech testing platform."""
+        """Retrieve all active projects from the testing platform."""
         api_key = os.getenv("ORDINO_CLI_API_KEY")
         if not api_key:
             raise ValueError("ORDINO_CLI_API_KEY environment variable is required")

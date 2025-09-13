@@ -36,7 +36,7 @@ def add(digit1: int, digit2: int) -> int:
 @mcp.tool()
 def get_projects(mode: str = "summary") -> str:
     """
-    Get all active projects from GrubTech testing platform.
+    Get all active projects from testing platform.
     
     Args:
         mode: Control level of detail returned
