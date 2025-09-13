@@ -121,22 +121,20 @@ class OrdinoResultClient:
                 
                 total_cases += 1
             
-            # Return simple success message
+            # Return required information in compact format
             return {
                 "success": True,
-                "message": f"Successfully processed and saved {total_cases} test failure cases to knowledge database",
                 "projects_processed": ["dataplatform-reporting"],  # Default project
                 "total_cases_saved": total_cases,
                 "available_projects": project_names
             }
         else:
             return {
-            "success": False,
-            "message": "No failure data available or API call failed",
-            "projects_processed": [],
-            "total_cases_saved": 0,
-            "available_projects": project_names
-        }
+                "success": False,
+                "projects_processed": [],
+                "total_cases_saved": 0,
+                "available_projects": project_names
+            }
     
     def get_latest_result_analysis(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
         """Get latest test result analysis from test report endpoint."""

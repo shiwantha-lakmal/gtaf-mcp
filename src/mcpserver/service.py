@@ -156,21 +156,30 @@ def get_knowledge_db_documents(partial_testcase_name: str) -> str:
         })
 
 @mcp.tool()
-def process_and_save_all_failures() -> str:
+def process_and_save_all_failures(random_string: str) -> str:
     """
     Fetch and save test failures to knowledge database.
     
-    Process: fetch, get, summarize, analysis
-    Save: caches, store, persist, knowledgebase
+    Process: ["fetch", "get", "summarize", "analysis"] # ✅ failure data processing
+    Save: ["caches", "store", "persist", "knowledgebase"] # ✅ knowledge database storage
     
-    Returns: Simple success confirmation with project names and case counts only.
+    Returns: Success confirmation with case counts only.
     """
     import json
     
     # Call the result client method
     processing_summary = result_client.process_and_save_all_failures()
     
-    return json.dumps(processing_summary, indent=2)
+    # Optimize for LLM consumption - return required info in compact format
+    optimized_result = {
+        "success": processing_summary.get("success", False),
+        "message": f"Processed {processing_summary.get('total_cases_saved', 0)} cases" if processing_summary.get("success") else "Processing failed",
+        "projects_processed": processing_summary.get("projects_processed", []),
+        "total_cases_saved": processing_summary.get("total_cases_saved", 0),
+        "available_projects": processing_summary.get("available_projects", [])
+    }
+    
+    return json.dumps(optimized_result, indent=2)
 
 @mcp.tool()
 def get_latest_result_analysis(project_name: str, mode: str = "summary") -> str:
@@ -203,20 +212,14 @@ def get_latest_result_analysis(project_name: str, mode: str = "summary") -> str:
 @mcp.tool()
 def cleanup_knowledge_database(random_string: str) -> str:
     """
-    Completely clean up the knowledge database by removing all stored data.
+    Fully clean knowledge database - removes all testcases, analysis files & directories.
     
-    This tool will:
-    - Remove all testcase failure history files
-    - Remove all analysis files and directories
-    - Recreate empty directory structure
+    Clean: ["remove", "delete", "clear", "purge", "reset"] # ✅ complete cleanup operation
+    Database: ["testcases", "analysis", "files", "dirs", "knowledge"] # ✅ all stored data
     
-    WARNING: This action is irreversible and will permanently delete all knowledge database content.
+    WARNING: Irreversible action - permanently deletes all knowledge database content.
     
-    Args:
-        random_string: Dummy parameter for no-parameter tools
-    
-    Returns:
-        JSON with cleanup statistics and results
+    Returns: Success confirmation with removal counts only.
     """
     import json
     from mcpserver.facade.knowledge_db import LightweightKnowledgeDB
@@ -224,4 +227,17 @@ def cleanup_knowledge_database(random_string: str) -> str:
     knowledge_db = LightweightKnowledgeDB()
     cleanup_results = knowledge_db.cleanup_knowledge_db_fully()
     
-    return json.dumps(cleanup_results, indent=2)
+    # Optimize for LLM consumption - return only essential info
+    optimized_result = {
+        "success": cleanup_results.get("success", False),
+        "testcases_removed": cleanup_results.get("testcases_removed", 0),
+        "analysis_files_removed": cleanup_results.get("analysis_files_removed", 0),
+        "analysis_dirs_removed": cleanup_results.get("analysis_directories_removed", 0),
+        "status": "completed" if cleanup_results.get("success") else "failed"
+    }
+    
+    # Only include errors if they exist
+    if cleanup_results.get("errors"):
+        optimized_result["error_count"] = len(cleanup_results["errors"])
+    
+    return json.dumps(optimized_result, indent=2)
