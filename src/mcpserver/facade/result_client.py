@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 from typing import Dict, Any, List
 from .knowledge_db import LightweightKnowledgeDB
 
@@ -24,7 +25,7 @@ class OrdinoResultClient:
     
     def get_projects(self) -> List[Dict[str, Any]]:
         """Retrieve all active projects from the GrubTech testing platform."""
-        api_key = "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4="
+        api_key = os.getenv("ORDINO_CLI_API_KEY", "ztjEFessWESzKfkaMRZiJHcQ+UY19N6tHW5GKj7QfS4=")
         endpoint = "/project-external"
         
         data = self._make_request(endpoint, api_key)
@@ -32,7 +33,7 @@ class OrdinoResultClient:
     
     def get_test_failures(self, project_id: str = "0a180944-8df0-4fc5-9f38-98a36bfda85c") -> str:
         """Retrieve comprehensive test failure analysis for a specific project."""
-        api_key = "YoXGKROxf/p43uOoTMhUVWusceS1Y+5VoaQP54sJU+I="
+        api_key = os.getenv("ORDINO_SYSTEM_API_KEY", "qlH69ODS7QFSjs/XHbA4ViNNZv1EQK0uNNkUGDnRCBk=")
         endpoint = f"/public/test-report/failed-test-cases/{project_id}"
         
         data = self._make_request(endpoint, api_key)
@@ -137,7 +138,7 @@ class OrdinoResultClient:
     
     def get_latest_result_analysis(self, test_setup_id: str = "5affdb16-dcaf-40d2-9a17-c81d7c6d9e50") -> Dict[str, Any]:
         """Get latest test result analysis from test report endpoint."""
-        api_key = "YoXGKROxf/p43uOoTMhUVWusceS1Y+5VoaQP54sJU+I="
+        api_key = os.getenv("ORDINO_SYSTEM_API_KEY", "qlH69ODS7QFSjs/XHbA4ViNNZv1EQK0uNNkUGDnRCBk=")
         endpoint = f"/public/test-report/test-setup/{test_setup_id}"
         
         try:
