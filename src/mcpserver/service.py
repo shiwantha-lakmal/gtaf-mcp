@@ -156,19 +156,24 @@ def get_knowledge_db_documents(partial_testcase_name: str) -> str:
         })
 
 @mcp.tool()
-def process_and_save_all_failures() -> str:
+def process_and_save_all_failures(project_name: str = "") -> str:
     """
-    Fetch and save test failures to knowledge database.
+    Fetch and save test failures to knowledge database for specific project.
     
     Process: ["fetch", "get", "summarize", "analysis"] # ✅ failure data processing
     Save: ["caches", "store", "persist", "knowledgebase"] # ✅ knowledge database storage
+    Project: ["partial", "name", "match", "dynamic", "lookup"] # ✅ flexible project selection
     
-    Returns: Success confirmation with case counts only.
+    Args:
+        project_name: Project name or partial name (e.g. "portal", "reporting"). If empty, processes all projects.
+    
+    Returns: Success confirmation with case counts and processed projects.
     """
     import json
     
-    # Call the result client method
-    processing_summary = result_client.process_and_save_all_failures()
+    # Call the result client method with optional project name
+    project_filter = project_name.strip() if project_name and project_name.strip() else None
+    processing_summary = result_client.process_and_save_all_failures(project_filter)
     
     # Optimize for LLM consumption - return required info in compact format
     optimized_result = {

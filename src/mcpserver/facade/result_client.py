@@ -78,63 +78,121 @@ class OrdinoResultClient:
         
         return json.dumps(data, indent=2)
     
-    def process_and_save_all_failures(self) -> Dict[Any, Any]:
+    def process_and_save_all_failures(self, project_name: str = None) -> Dict[Any, Any]:
         """
-        Get all current test failures from the main API and save them to the knowledge database.
+        Get test failures and save them to the knowledge database.
         
         This function:
-        - Fetches the latest test failures from the dataplatform-reporting project
+        - If project_name provided: Fetches failures from specific project using partial name matching
+        - If no project_name: Fetches failures from all available projects
         - Processes each failure and saves it to the knowledge database
-        - Returns a simple success message with project names and case counts
+        - Returns success message with processed project names and case counts
         
+        Args:
+            project_name: Optional partial project name to filter specific project
+            
         Returns:
             Dictionary with success message, project names, and case counts
         """
-        # Get all projects to identify project names
-        projects = self.get_projects()
-        project_names = [p.get("name", "Unknown") for p in projects]
+        # Get all projects for reference
+        all_projects = self.get_projects()
+        all_project_names = [p.get("name", "Unknown") for p in all_projects]
         
-        # Get current failures from API (using default project)
-        failures_json = self.get_test_failures()
-        failures_data = json.loads(failures_json)
+        total_cases = 0
+        processed_projects = []
+        failed_projects = []
         
-        if failures_data.get("isSuccess") and failures_data.get("extraInfo"):
-            total_cases = 0
+        # Determine which projects to process
+        if project_name:
+            # Find specific project by partial name
+            project_info = self.find_project_by_name(project_name)
+            if not project_info["found"]:
+                return {
+                    "success": False,
+                    "error": project_info["error"],
+                    "projects_processed": [],
+                    "total_cases_saved": 0,
+                    "available_projects": all_project_names
+                }
             
-            for failure in failures_data["extraInfo"]:
-                # Extract failure details
-                test_case = failure.get("testCase", "Unknown Test")
-                error = failure.get("error", "Unknown Error")
-                stack_trace = failure.get("stackTrace", "")
-                file_path = failure.get("filePath", "")
-                failed_step = failure.get("failedStep", "")
-                
-                # Save to knowledge database
-                self.knowledge_db.save_failure({
-                    "testCase": test_case,
-                    "status": failure.get("status", "failed"),
-                    "error": error,
-                    "stackTrace": stack_trace,
-                    "filePath": file_path,
-                    "failedStep": failed_step
-                })
-                
-                total_cases += 1
-            
-            # Return required information in compact format
+            # Process only the found project
+            projects_to_process = [{
+                "id": project_info["project_id"],
+                "name": project_info["project_name"]
+            }]
+        else:
+            # Process all projects
+            projects_to_process = all_projects
+        
+        # Process failures from selected projects
+        for project in projects_to_process:
+            result = self._process_single_project(project, processed_projects, failed_projects)
+            if result:
+                total_cases += result
+        
+        # Return results
+        if processed_projects or total_cases > 0:
             return {
                 "success": True,
-                "projects_processed": ["dataplatform-reporting"],  # Default project
+                "projects_processed": processed_projects,
                 "total_cases_saved": total_cases,
-                "available_projects": project_names
+                "available_projects": all_project_names
             }
         else:
             return {
                 "success": False,
-                "projects_processed": [],
+                "projects_processed": failed_projects,
                 "total_cases_saved": 0,
-                "available_projects": project_names
+                "available_projects": all_project_names
             }
+    
+    def _process_single_project(self, project: Dict[str, Any], processed_projects: List[str], failed_projects: List[str]) -> int:
+        """Process failures for a single project. Returns number of cases processed."""
+        project_id = project.get("id")
+        project_name = project.get("name", "Unknown")
+        
+        if not project_id:
+            return 0
+            
+        try:
+            failures_json = self.get_test_failures(project_id)
+            failures_data = json.loads(failures_json)
+            
+            if failures_data.get("isSuccess") and failures_data.get("extraInfo"):
+                cases_saved = self._save_project_failures(failures_data["extraInfo"], project_name, project_id)
+                if cases_saved > 0:
+                    processed_projects.append(project_name)
+                return cases_saved
+            elif failures_data.get("isSuccess"):
+                # Project has no failures (success case)
+                processed_projects.append(project_name)
+                return 0
+                
+        except Exception:
+            failed_projects.append(project_name)
+            
+        return 0
+    
+    def _save_project_failures(self, failures: List[Dict], project_name: str, project_id: str) -> int:
+        """Save failures for a project to knowledge database. Returns count of saved failures."""
+        saved_count = 0
+        
+        for failure in failures:
+            failure_data = {
+                "testCase": failure.get("testCase", "Unknown Test"),
+                "status": failure.get("status", "failed"),
+                "error": failure.get("error", "Unknown Error"),
+                "stackTrace": failure.get("stackTrace", ""),
+                "filePath": failure.get("filePath", ""),
+                "failedStep": failure.get("failedStep", ""),
+                "project_name": project_name,
+                "project_id": project_id
+            }
+            
+            self.knowledge_db.save_failure(failure_data)
+            saved_count += 1
+            
+        return saved_count
     
     def get_latest_result_analysis(self, project_id: str) -> Dict[str, Any]:
         """Get latest test result analysis from test report endpoint using project ID."""
@@ -168,56 +226,45 @@ class OrdinoResultClient:
             "failures": []  # Top 3 failures only for minimal token usage
         }
         
-        # Parse test results from the hierarchical structure
-        def count_tests_recursive(node):
-            """Recursively count tests in the hierarchical structure."""
-            total = 0
-            passed = 0
-            failed = 0
-            failures = []
-            
-            # Check if this node has test details
-            if "testDetails" in node and isinstance(node["testDetails"], list):
-                for test in node["testDetails"]:
-                    total += 1
-                    if test.get("state") == "passed":
-                        passed += 1
-                    elif test.get("state") == "failed":
-                        failed += 1
-                        # Add to failures list (limit to 3 for low LLM consumption)
-                        if len(failures) < 3:
-                            error_msg = test.get("errorMessage", "No error message")
-                            # Truncate long error messages to first line for brevity
-                            if error_msg and len(error_msg) > 100:
-                                error_msg = error_msg.split('\n')[0][:100] + "..."
-                            
-                            failures.append({
-                                "name": test.get("testTitle", "Unknown")[:50],  # Truncate long names
-                                "error": error_msg,
-                                "duration": test.get("duration")
-                            })
-            
-            # Recursively process children
-            if "children" in node and isinstance(node["children"], list):
-                for child in node["children"]:
-                    child_total, child_passed, child_failed, child_failures = count_tests_recursive(child)
-                    total += child_total
-                    passed += child_passed
-                    failed += child_failed
-                    # Add child failures if we haven't reached the limit
-                    for failure in child_failures:
-                        if len(failures) < 3:
-                            failures.append(failure)
-            
-            return total, passed, failed, failures
+        # Simplified flat processing approach
+        def process_test_node(node, summary, failures_list):
+            """Process a single test node and update summary."""
+            if "testDetails" not in node or not isinstance(node["testDetails"], list):
+                return
+                
+            for test in node["testDetails"]:
+                summary["total"] += 1
+                state = test.get("state")
+                
+                if state == "passed":
+                    summary["passed"] += 1
+                elif state == "failed":
+                    summary["failed"] += 1
+                    # Add failure if under limit
+                    if len(failures_list) < 3:
+                        error_msg = test.get("errorMessage", "No error message")
+                        if error_msg and len(error_msg) > 100:
+                            error_msg = error_msg.split('\n')[0][:100] + "..."
+                        
+                        failures_list.append({
+                            "name": test.get("testTitle", "Unknown")[:50],
+                            "error": error_msg,
+                            "duration": test.get("duration")
+                        })
         
-        # Count tests from the root level
+        def traverse_tree(node, summary, failures_list):
+            """Traverse the test tree and collect results."""
+            process_test_node(node, summary, failures_list)
+            
+            # Process children
+            for child in node.get("children", []):
+                traverse_tree(child, summary, failures_list)
+        
+        # Process tests from the root level
         if "label" in raw_data:  # This is the hierarchical test structure
-            total_tests, passed_tests, failed_tests, recent_failures = count_tests_recursive(raw_data)
-            summary["total"] = total_tests
-            summary["passed"] = passed_tests
-            summary["failed"] = failed_tests
-            summary["failures"] = recent_failures
+            failures_list = []
+            traverse_tree(raw_data, summary, failures_list)
+            summary["failures"] = failures_list
             
             # Calculate pass rate
             if summary["total"] > 0:
