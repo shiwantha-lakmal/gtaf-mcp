@@ -1,4 +1,4 @@
-# Generic Test Automation MCP Server
+# Generic Test Automation Analizer - MCP Server
 
 A comprehensive Model Context Protocol (MCP) server for test automation frameworks, providing AI-powered access to test results, failure analysis, and knowledge database management.
 
