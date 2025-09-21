@@ -29,18 +29,23 @@ A comprehensive Model Context Protocol (MCP) server for test automation framewor
 - Access to testing platform API endpoints
 - Valid API keys for Ordino services
 
-### Install from Source
+### Install UV (Package Manager)
+
+UV is required to install and run this MCP server:
 
 ```bash
-git clone <repository-url>
-cd gtaf-mcp
-pip install -e .
-```
+# macOS (Homebrew - Recommended)
+brew install uv
 
-### Install via UV
+# macOS (curl)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-```bash
-uvx --from git+https://github.com/your-org/gtaf-mcp.git mcp-server
+# Windows (PowerShell - Recommended)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+
+# Verify installation
+uv --version
 ```
 
 ## ⚙️ Configuration
@@ -54,10 +59,10 @@ Add to your MCP client configuration (e.g., `~/.cursor/mcp.json`):
   "mcpServers": {
     "gtaf-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/your-org/gtaf-mcp.git", "mcp-server"],
+      "args": ["--from", "git+https://github.com/shiwantha-lakmal/gtaf-mcp.git", "mcp-server"],
       "env": {
-        "ORDINO_CLI_API_KEY": "your-cli-api-key",
-        "ORDINO_SYSTEM_API_KEY": "your-system-api-key"
+        "ORDINO_CLI_API_KEY": "<ORDINO-KEY>",
+        "ORDINO_SYSTEM_API_KEY": "<ORDINO-SYSTEM-KEY>"
       }
     }
   }
@@ -73,35 +78,8 @@ Add to your MCP client configuration (e.g., `~/.cursor/mcp.json`):
 
 ## 🛠️ Available Tools
 
-### 1. Mathematical Operations
 
-#### `add(digit1: int, digit2: int) -> int`
-
-Performs mathematical addition of two integers.
-
-**Parameters:**
-- `digit1`: First integer operand
-- `digit2`: Second integer operand
-
-**Example:**
-```json
-{
-  "tool": "add",
-  "parameters": {
-    "digit1": 5,
-    "digit2": 3
-  }
-}
-```
-
-**Response:**
-```json
-8
-```
-
----
-
-### 2. Project Management
+### 1. Project Management
 
 #### `get_projects(mode: str = "summary") -> str`
 
@@ -131,7 +109,7 @@ Get all active projects from testing platform.
   },
   {
     "id": "b4d4abee-6eab-48f1-b92c-55ce73fedc9c", 
-    "name": "ui-integration-platform"
+    "name": "integration-platform"
   },
   {
     "id": "0a180944-8df0-4fc5-9f38-98a36bfda85c",
@@ -142,7 +120,7 @@ Get all active projects from testing platform.
 
 ---
 
-### 3. Failure Analysis
+### 2. Failure Analysis
 
 #### `get_failures_by_project(project_name: str, mode: str = "summary") -> str`
 
@@ -200,7 +178,7 @@ Get test failure details for a specific project by name.
 
 ---
 
-### 4. Knowledge Database
+### 3. Knowledge Database
 
 #### `get_knowledge_db_documents(partial_testcase_name: str) -> str`
 
@@ -621,4 +599,4 @@ mcp dev src/mcpserver/service.py
 
 ---
 
-**Built with ❤️ for Ordino Test Automation**
+**Built with ❤️ for Ordino.ai Test Automation**
